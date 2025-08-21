@@ -1,0 +1,2456 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Suivi des Immobilisations</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        .fade-in { animation: fadeIn 0.3s ease-in; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen">
+    <!-- Écran de connexion -->
+    <div id="loginScreen" class="fixed inset-0 bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center z-50">
+        <div class="bg-white rounded-xl shadow-2xl p-8 m-4 max-w-md w-full">
+            <div class="text-center mb-6">
+                <div class="text-4xl mb-4">🔐</div>
+                <h2 class="text-2xl font-bold text-gray-800 mb-2">Accès Sécurisé</h2>
+                <p class="text-gray-600">Suivi des Immobilisations</p>
+            </div>
+            <form id="loginForm" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Nom d'utilisateur</label>
+                    <input type="text" id="username" required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Entrez votre nom d'utilisateur">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Mot de passe</label>
+                    <input type="password" id="password" required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Entrez votre mot de passe">
+                </div>
+                <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition duration-200 transform hover:scale-105">
+                    🔓 Se connecter
+                </button>
+            </form>
+            <div id="loginError" class="hidden mt-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-lg text-sm">
+                ❌ Nom d'utilisateur ou mot de passe incorrect
+            </div>
+            <div class="mt-6 p-4 bg-blue-50 rounded-lg">
+                <p class="text-xs text-blue-800 mb-2"><strong>💡 Aide :</strong></p>
+                <p class="text-xs text-blue-700">Contactez votre administrateur système pour obtenir vos identifiants de connexion.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Écran de connexion mobile pour QR Code -->
+    <div id="mobileLoginScreen" class="hidden fixed inset-0 bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center z-50">
+        <div class="bg-white rounded-xl shadow-2xl p-8 m-4 max-w-md w-full">
+            <div class="text-center mb-6">
+                <div class="text-4xl mb-4">📱</div>
+                <h2 class="text-2xl font-bold text-gray-800 mb-2">Accès Mobile Sécurisé</h2>
+                <p class="text-gray-600">Immobilisation via QR Code</p>
+            </div>
+            <form id="mobileLoginForm" class="space-y-4">
+                <input type="hidden" id="mobileAssetId">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Nom d'utilisateur</label>
+                    <input type="text" id="mobileUsername" required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Entrez votre nom d'utilisateur">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Mot de passe</label>
+                    <input type="password" id="mobilePassword" required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Entrez votre mot de passe">
+                </div>
+                <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition duration-200 transform hover:scale-105">
+                    🔓 Se connecter
+                </button>
+            </form>
+            <div id="mobileLoginError" class="hidden mt-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-lg text-sm">
+                ❌ Nom d'utilisateur ou mot de passe incorrect
+            </div>
+            <div class="mt-6 p-4 bg-blue-50 rounded-lg">
+                <p class="text-xs text-blue-800 mb-2"><strong>📱 Accès via QR Code</strong></p>
+                <p class="text-xs text-blue-700">Connectez-vous pour voir les détails de cette immobilisation</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Vue Mobile pour QR Code -->
+    <div id="mobileView" class="hidden min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+        <div class="container mx-auto px-4 py-6 max-w-md">
+            <!-- En-tête mobile -->
+            <div class="bg-white rounded-xl shadow-lg p-6 mb-6 text-center">
+                <div class="text-4xl mb-3">📱</div>
+                <h1 class="text-2xl font-bold text-gray-800 mb-2">Immobilisation</h1>
+                <p class="text-gray-600 text-sm">Accès via QR Code</p>
+            </div>
+
+            <!-- Informations de l'immobilisation -->
+            <div id="mobileAssetInfo" class="bg-white rounded-xl shadow-lg p-6 mb-6">
+                <!-- Contenu dynamique -->
+            </div>
+
+            <!-- Actions mobiles -->
+            <div id="mobileActions" class="space-y-4">
+                <button onclick="showMobileEditForm()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-4 px-6 rounded-xl transition duration-200 transform hover:scale-105 flex items-center justify-center gap-3">
+                    <span class="text-xl">✏️</span>
+                    <span>Modifier cette immobilisation</span>
+                </button>
+                
+                <button onclick="reportIssue()" class="w-full bg-orange-600 hover:bg-orange-700 text-white font-medium py-4 px-6 rounded-xl transition duration-200 transform hover:scale-105 flex items-center justify-center gap-3">
+                    <span class="text-xl">⚠️</span>
+                    <span>Signaler un problème</span>
+                </button>
+                
+                <button onclick="viewFullSystem()" class="w-full bg-gray-600 hover:bg-gray-700 text-white font-medium py-4 px-6 rounded-xl transition duration-200 transform hover:scale-105 flex items-center justify-center gap-3">
+                    <span class="text-xl">💻</span>
+                    <span>Accéder au système complet</span>
+                </button>
+            </div>
+
+            <!-- Formulaire de modification mobile -->
+            <div id="mobileEditForm" class="hidden bg-white rounded-xl shadow-lg p-6 mb-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-xl font-semibold text-gray-800">✏️ Modification</h3>
+                    <button onclick="hideMobileEditForm()" class="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
+                </div>
+                <form id="mobileEditFormElement" class="space-y-4">
+                    <input type="hidden" id="mobileEditAssetId">
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Localisation</label>
+                        <input type="text" id="mobileEditLocation" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Responsable</label>
+                        <input type="text" id="mobileEditResponsible" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Statut</label>
+                        <select id="mobileEditStatus" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" onchange="toggleMobileMaintenanceField()">
+                            <option value="En service">✅ En service</option>
+                            <option value="Maintenance">⚠️ Maintenance</option>
+                            <option value="Réformé">🔴 Réformé</option>
+                        </select>
+                    </div>
+                    
+                    <div id="mobileMaintenanceField" class="hidden">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Description de la maintenance</label>
+                        <textarea id="mobileEditMaintenance" rows="3" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Décrivez la maintenance à effectuer..."></textarea>
+                    </div>
+                    
+                    <div class="flex gap-3 pt-4">
+                        <button type="submit" class="flex-1 bg-green-600 hover:bg-green-700 text-white font-medium py-3 px-4 rounded-lg transition duration-200">
+                            💾 Sauvegarder
+                        </button>
+                        <button type="button" onclick="hideMobileEditForm()" class="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-700 font-medium py-3 px-4 rounded-lg transition duration-200">
+                            ❌ Annuler
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Formulaire de signalement -->
+            <div id="mobileIssueForm" class="hidden bg-white rounded-xl shadow-lg p-6 mb-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-xl font-semibold text-gray-800">⚠️ Signaler un problème</h3>
+                    <button onclick="hideMobileIssueForm()" class="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
+                </div>
+                <form id="mobileIssueFormElement" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Type de problème</label>
+                        <select id="mobileIssueType" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent">
+                            <option value="Panne">🔧 Panne technique</option>
+                            <option value="Maintenance">⚠️ Maintenance requise</option>
+                            <option value="Dommage">💥 Dommage/Casse</option>
+                            <option value="Localisation">📍 Problème de localisation</option>
+                            <option value="Autre">❓ Autre</option>
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Description du problème</label>
+                        <textarea id="mobileIssueDescription" rows="4" required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent" placeholder="Décrivez le problème rencontré..."></textarea>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Votre nom (optionnel)</label>
+                        <input type="text" id="mobileReporterName" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent" placeholder="Votre nom">
+                    </div>
+                    
+                    <div class="flex gap-3 pt-4">
+                        <button type="submit" class="flex-1 bg-orange-600 hover:bg-orange-700 text-white font-medium py-3 px-4 rounded-lg transition duration-200">
+                            📤 Envoyer le signalement
+                        </button>
+                        <button type="button" onclick="hideMobileIssueForm()" class="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-700 font-medium py-3 px-4 rounded-lg transition duration-200">
+                            ❌ Annuler
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Pied de page mobile -->
+            <div class="text-center text-gray-500 text-sm mt-8">
+                <p>📱 Vue mobile - Suivi des Immobilisations</p>
+                <p class="mt-2">Scannez un QR code pour accéder aux détails</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="mainApp" class="hidden">
+    <div class="container mx-auto px-4 py-8">
+        <!-- En-tête -->
+        <div class="bg-white rounded-xl shadow-lg p-6 mb-8">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h1 class="text-3xl font-bold text-gray-800 mb-2">📊 Suivi des Immobilisations</h1>
+                    <p class="text-gray-600">Gérez efficacement votre patrimoine d'entreprise</p>
+                </div>
+                <div class="text-right">
+                    <div class="text-2xl font-bold text-blue-600" id="totalValue">0 €</div>
+                    <div class="text-sm text-gray-500">Valeur totale</div>
+                    <div class="flex gap-2 mt-3">
+                        <button onclick="downloadDatabase()" class="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg transition duration-200 transform hover:scale-105 flex items-center gap-2">
+                            📥 Télécharger Excel
+                        </button>
+                        <button onclick="showHistoryModal()" class="bg-purple-600 hover:bg-purple-700 text-white font-medium py-2 px-4 rounded-lg transition duration-200 transform hover:scale-105 flex items-center gap-2">
+                            📜 Historique
+                        </button>
+                        <button id="usersButton" onclick="showUsersModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-lg transition duration-200 transform hover:scale-105 flex items-center gap-2 hidden">
+                            👥 Utilisateurs
+                        </button>
+                        <button onclick="logout()" class="bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-lg transition duration-200 transform hover:scale-105 flex items-center gap-2">
+                            🚪 Déconnexion
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Statistiques -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <div class="flex items-center">
+                    <div class="bg-blue-100 p-3 rounded-full">
+                        <span class="text-2xl">💼</span>
+                    </div>
+                    <div class="ml-4">
+                        <div class="text-2xl font-bold text-gray-800" id="totalAssets">0</div>
+                        <div class="text-sm text-gray-500">Total Actifs</div>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <div class="flex items-center">
+                    <div class="bg-green-100 p-3 rounded-full">
+                        <span class="text-2xl">✅</span>
+                    </div>
+                    <div class="ml-4">
+                        <div class="text-2xl font-bold text-green-600" id="activeAssets">0</div>
+                        <div class="text-sm text-gray-500">En Service</div>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <div class="flex items-center">
+                    <div class="bg-yellow-100 p-3 rounded-full">
+                        <span class="text-2xl">⚠️</span>
+                    </div>
+                    <div class="ml-4">
+                        <div class="text-2xl font-bold text-yellow-600" id="maintenanceAssets">0</div>
+                        <div class="text-sm text-gray-500">Maintenance</div>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <div class="flex items-center">
+                    <div class="bg-red-100 p-3 rounded-full">
+                        <span class="text-2xl">🔴</span>
+                    </div>
+                    <div class="ml-4">
+                        <div class="text-2xl font-bold text-red-600" id="retiredAssets">0</div>
+                        <div class="text-sm text-gray-500">Réformés</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Formulaire d'ajout -->
+        <div class="bg-white rounded-xl shadow-lg p-6 mb-8">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4">➕ Ajouter une Immobilisation</h2>
+            <form id="assetForm" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Référence</label>
+                    <input type="text" id="assetReference" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Ex: REF-001">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Désignation</label>
+                    <input type="text" id="assetName" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Ex: Ordinateur portable">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Catégorie</label>
+                    <select id="assetCategory" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                        <option value="">Sélectionner...</option>
+                        <option value="Machine">⚙️ Machine</option>
+                        <option value="Materiel de transport">🚛 Matériel de transport</option>
+                        <option value="Materiel et outillage">🔧 Matériel et outillage</option>
+                        <option value="Autre immobilisation">📦 Autre immobilisation</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Valeur d'acquisition (€)</label>
+                    <input type="number" id="assetValue" required min="0" step="0.01" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="0.00">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Date d'acquisition</label>
+                    <input type="date" id="assetDate" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Localisation</label>
+                    <input type="text" id="assetLocation" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Ex: Bureau 201">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Responsable</label>
+                    <input type="text" id="assetResponsible" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Ex: Jean Dupont">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Statut</label>
+                    <select id="assetStatus" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" onchange="toggleMaintenanceField()">
+                        <option value="En service">✅ En service</option>
+                        <option value="Maintenance">⚠️ Maintenance</option>
+                        <option value="Réformé">🔴 Réformé</option>
+                    </select>
+                </div>
+                <div id="maintenanceField" class="hidden">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Description de la maintenance</label>
+                    <textarea id="assetMaintenance" rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Décrivez la maintenance à effectuer..."></textarea>
+                </div>
+                <div class="flex items-end">
+                    <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition duration-200 transform hover:scale-105">
+                        Ajouter l'actif
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Scanner QR Code -->
+        <div class="bg-white rounded-xl shadow-lg p-6 mb-8">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4">📱 Scanner QR Code</h2>
+            <div class="flex flex-wrap gap-4 items-center mb-4">
+                <div class="flex-1 min-w-64">
+                    <input type="text" id="qrCodeInput" placeholder="🔍 Entrez le code QR ou scannez..." class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                </div>
+                <button onclick="startQRScanner()" class="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg transition duration-200 transform hover:scale-105">
+                    📷 Scanner
+                </button>
+                <button onclick="searchByQRCode()" class="bg-purple-600 hover:bg-purple-700 text-white font-medium py-2 px-4 rounded-lg transition duration-200 transform hover:scale-105">
+                    🔍 Rechercher
+                </button>
+                <button onclick="clearQRSearch()" class="bg-gray-500 hover:bg-gray-600 text-white font-medium py-2 px-4 rounded-lg transition duration-200">
+                    ❌ Effacer
+                </button>
+            </div>
+            <div id="scannerContainer" class="hidden">
+                <div class="bg-gray-100 rounded-lg p-4 mb-4">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-sm font-medium text-gray-700">📷 Scanner actif</span>
+                        <button onclick="stopQRScanner()" class="text-red-600 hover:text-red-800 text-sm">❌ Arrêter</button>
+                    </div>
+                    <video id="qrVideo" class="w-full max-w-md mx-auto rounded-lg" autoplay playsinline></video>
+                    <canvas id="qrCanvas" class="hidden"></canvas>
+                </div>
+            </div>
+            <p class="text-sm text-gray-500">💡 Astuce: Cliquez sur "Scanner" pour utiliser votre caméra et scanner un QR code automatiquement</p>
+        </div>
+
+        <!-- Filtres et recherche -->
+        <div class="bg-white rounded-xl shadow-lg p-6 mb-8">
+            <div class="flex flex-wrap gap-4 items-center">
+                <div class="flex-1 min-w-64">
+                    <input type="text" id="searchInput" placeholder="🔍 Rechercher un actif..." class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                </div>
+                <select id="categoryFilter" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    <option value="">Toutes catégories</option>
+                    <option value="Machine">⚙️ Machine</option>
+                    <option value="Materiel de transport">🚛 Matériel de transport</option>
+                    <option value="Materiel et outillage">🔧 Matériel et outillage</option>
+                    <option value="Autre immobilisation">📦 Autre immobilisation</option>
+                </select>
+                <select id="statusFilter" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    <option value="">Tous statuts</option>
+                    <option value="En service">✅ En service</option>
+                    <option value="Maintenance">⚠️ Maintenance</option>
+                    <option value="Réformé">🔴 Réformé</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Liste des immobilisations -->
+        <div class="bg-white rounded-xl shadow-lg overflow-hidden">
+            <div class="px-6 py-4 bg-gray-50 border-b">
+                <h2 class="text-xl font-semibold text-gray-800">📋 Liste des Immobilisations</h2>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Référence</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Désignation</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Catégorie</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Valeur</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Localisation</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Responsable</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Statut</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Maintenance</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">QR Code</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="assetTableBody" class="bg-white divide-y divide-gray-200">
+                        <!-- Les actifs seront ajoutés ici dynamiquement -->
+                    </tbody>
+                </table>
+            </div>
+            <div id="emptyState" class="text-center py-12">
+                <div class="text-6xl mb-4">📦</div>
+                <h3 class="text-lg font-medium text-gray-900 mb-2">Aucune immobilisation</h3>
+                <p class="text-gray-500">Commencez par ajouter votre première immobilisation ci-dessus.</p>
+            </div>
+        </div>
+    </div>
+    </div>
+
+    <!-- Modal QR Code -->
+    <div id="qrModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-xl shadow-2xl p-6 m-4 max-w-md w-full">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-semibold text-gray-800">📱 QR Code</h3>
+                <button onclick="closeQRModal()" class="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
+            </div>
+            <div class="text-center">
+                <div id="qrCodeContainer" class="mb-4 flex justify-center">
+                    <canvas id="qrDisplayCanvas" width="200" height="200"></canvas>
+                </div>
+                <div id="qrAssetInfo" class="text-sm text-gray-600 mb-4"></div>
+                <div class="flex gap-2">
+                    <button onclick="downloadQRCode()" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition duration-200">
+                        📥 Télécharger
+                    </button>
+                    <button onclick="printQRCode()" class="flex-1 bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg transition duration-200">
+                        🖨️ Imprimer
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Historique -->
+    <div id="historyModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-xl shadow-2xl p-6 m-4 max-w-6xl w-full max-h-96 overflow-y-auto">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-semibold text-gray-800">📜 Historique des Modifications</h3>
+                <button onclick="closeHistoryModal()" class="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Date/Heure</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Action</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Immobilisation</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Utilisateur</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Modifications</th>
+                        </tr>
+                    </thead>
+                    <tbody id="historyTableBody" class="bg-white divide-y divide-gray-200">
+                        <!-- L'historique sera ajouté ici dynamiquement -->
+                    </tbody>
+                </table>
+            </div>
+            <div id="historyEmptyState" class="text-center py-8 hidden">
+                <div class="text-4xl mb-2">📜</div>
+                <h3 class="text-lg font-medium text-gray-900 mb-2">Aucun historique</h3>
+                <p class="text-gray-500">Les modifications apparaîtront ici.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Gestion des Utilisateurs -->
+    <div id="usersModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-xl shadow-2xl p-6 m-4 max-w-6xl w-full max-h-96 overflow-y-auto">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-semibold text-gray-800">👥 Gestion des Utilisateurs</h3>
+                <button onclick="closeUsersModal()" class="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
+            </div>
+            
+            <!-- Formulaire d'ajout d'utilisateur -->
+            <div class="bg-gray-50 rounded-lg p-4 mb-6">
+                <h4 class="text-lg font-medium text-gray-800 mb-3">➕ Ajouter un utilisateur</h4>
+                <form id="addUserForm" class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Nom d'utilisateur</label>
+                        <input type="text" id="newUsername" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" placeholder="Ex: jdupont">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Mot de passe</label>
+                        <input type="password" id="newPassword" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" placeholder="Mot de passe">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Rôle</label>
+                        <select id="newUserRole" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                            <option value="Utilisateur">👤 Utilisateur</option>
+                            <option value="Gestionnaire">👨‍💼 Gestionnaire</option>
+                            <option value="Administrateur">👑 Administrateur</option>
+                        </select>
+                    </div>
+                    <div class="flex items-end">
+                        <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-lg transition duration-200">
+                            ➕ Ajouter
+                        </button>
+                    </div>
+                </form>
+            </div>
+            
+            <!-- Liste des utilisateurs -->
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Nom d'utilisateur</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Rôle</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Date de création</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="usersTableBody" class="bg-white divide-y divide-gray-200">
+                        <!-- Les utilisateurs seront ajoutés ici dynamiquement -->
+                    </tbody>
+                </table>
+            </div>
+            <div id="usersEmptyState" class="text-center py-8 hidden">
+                <div class="text-4xl mb-2">👥</div>
+                <h3 class="text-lg font-medium text-gray-900 mb-2">Aucun utilisateur</h3>
+                <p class="text-gray-500">Ajoutez votre premier utilisateur ci-dessus.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de modification -->
+    <div id="editModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-xl shadow-2xl p-6 m-4 max-w-2xl w-full max-h-96 overflow-y-auto">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-semibold text-gray-800">✏️ Modifier l'immobilisation</h3>
+                <button onclick="closeEditModal()" class="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
+            </div>
+            <form id="editForm" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <input type="hidden" id="editAssetId">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Référence</label>
+                    <input type="text" id="editAssetReference" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Désignation</label>
+                    <input type="text" id="editAssetName" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Catégorie</label>
+                    <select id="editAssetCategory" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                        <option value="Machine">⚙️ Machine</option>
+                        <option value="Materiel de transport">🚛 Matériel de transport</option>
+                        <option value="Materiel et outillage">🔧 Matériel et outillage</option>
+                        <option value="Autre immobilisation">📦 Autre immobilisation</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Valeur (€)</label>
+                    <input type="number" id="editAssetValue" required min="0" step="0.01" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Date d'acquisition</label>
+                    <input type="date" id="editAssetDate" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Localisation</label>
+                    <input type="text" id="editAssetLocation" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Responsable</label>
+                    <input type="text" id="editAssetResponsible" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Statut</label>
+                    <select id="editAssetStatus" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" onchange="toggleEditMaintenanceField()">
+                        <option value="En service">✅ En service</option>
+                        <option value="Maintenance">⚠️ Maintenance</option>
+                        <option value="Réformé">🔴 Réformé</option>
+                    </select>
+                </div>
+                <div id="editMaintenanceField" class="md:col-span-2 hidden">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Description de la maintenance</label>
+                    <textarea id="editAssetMaintenance" rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Décrivez la maintenance à effectuer..."></textarea>
+                </div>
+                <div class="md:col-span-2 flex gap-4 pt-4">
+                    <button type="submit" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition duration-200">
+                        Sauvegarder
+                    </button>
+                    <button type="button" onclick="closeEditModal()" class="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-700 font-medium py-2 px-4 rounded-lg transition duration-200">
+                        Annuler
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        let assets = [];
+        let nextId = 1;
+        let qrScanner = null;
+        let scannerStream = null;
+        let history = []; // Historique des modifications
+        let historyId = 1;
+        let currentUser = null; // Utilisateur connecté
+        let isAuthenticated = false; // État de connexion
+        let users = []; // Liste des utilisateurs
+        let nextUserId = 1;
+
+        // Charger les utilisateurs depuis localStorage ou créer les utilisateurs par défaut
+        function loadUsers() {
+            const savedUsers = localStorage.getItem('systemUsers');
+            if (savedUsers) {
+                users = JSON.parse(savedUsers);
+                if (users.length > 0) {
+                    nextUserId = Math.max(...users.map(u => u.id)) + 1;
+                }
+            } else {
+                // Utilisateurs par défaut (encodés pour la sécurité)
+                const defaultUsers = atob('W3siaWQiOjEsInVzZXJuYW1lIjoiYWRtaW4iLCJwYXNzd29yZCI6ImltbW9iaWxpc2F0aW9uczIwMjQiLCJyb2xlIjoiQWRtaW5pc3RyYXRldXIiLCJjcmVhdGVkRGF0ZSI6IjIwMjQtMDEtMDFUMDA6MDA6MDAuMDAwWiJ9LHsiaWQiOjIsInVzZXJuYW1lIjoiZ2VzdGlvbm5haXJlIiwicGFzc3dvcmQiOiJnZXN0aW9uMTIzIiwicm9sZSI6Ikdlc3Rpb25uYWlyZSIsImNyZWF0ZWREYXRlIjoiMjAyNC0wMS0wMVQwMDowMDowMC4wMDBaIn0seyJpZCI6MywidXNlcm5hbWUiOiJjb21wdGFibGUiLCJwYXNzd29yZCI6ImNvbXB0YTQ1NiIsInJvbGUiOiJDb21wdGFibGUiLCJjcmVhdGVkRGF0ZSI6IjIwMjQtMDEtMDFUMDA6MDA6MDAuMDAwWiJ9XQ==');
+                users = JSON.parse(defaultUsers);
+                nextUserId = 4;
+                saveUsers();
+            }
+        }
+
+        // Sauvegarder les utilisateurs
+        function saveUsers() {
+            localStorage.setItem('systemUsers', JSON.stringify(users));
+        }
+
+        // Vérifier les identifiants
+        function validateCredentials(username, password) {
+            return users.find(user => user.username === username && user.password === password);
+        }
+
+        // Initialisation
+        document.addEventListener('DOMContentLoaded', function() {
+            // Vérifier si on accède via QR code (vue mobile)
+            const urlParams = new URLSearchParams(window.location.search);
+            const assetId = urlParams.get('asset');
+            const viewMode = urlParams.get('view');
+            
+            if (assetId && viewMode === 'mobile') {
+                // Vérifier si l'utilisateur est déjà connecté pour la vue mobile
+                const savedUser = localStorage.getItem('currentUser');
+                const savedAuth = localStorage.getItem('isAuthenticated');
+                
+                if (savedUser && savedAuth === 'true') {
+                    // Utilisateur déjà connecté, aller directement à la vue mobile
+                    currentUser = savedUser;
+                    isAuthenticated = true;
+                    loadUsers();
+                    showMobileView(parseInt(assetId));
+                } else {
+                    // Demander la connexion
+                    showMobileLoginScreen(parseInt(assetId));
+                }
+                return;
+            }
+            
+            // Vérifier si l'utilisateur est déjà connecté
+            checkAuthenticationStatus();
+            
+            // Event listeners
+            document.getElementById('loginForm').addEventListener('submit', handleLogin);
+            document.getElementById('mobileLoginForm').addEventListener('submit', handleMobileLogin);
+            document.getElementById('assetForm').addEventListener('submit', addAsset);
+            document.getElementById('editForm').addEventListener('submit', updateAsset);
+            document.getElementById('addUserForm').addEventListener('submit', addUser);
+            document.getElementById('searchInput').addEventListener('input', filterAssets);
+            document.getElementById('categoryFilter').addEventListener('change', filterAssets);
+            document.getElementById('statusFilter').addEventListener('change', filterAssets);
+        });
+
+        // Vérifier le statut d'authentification
+        async function checkAuthenticationStatus() {
+            loadUsers(); // Charger les utilisateurs
+            
+            const savedUser = localStorage.getItem('currentUser');
+            const savedAuth = localStorage.getItem('isAuthenticated');
+            
+            if (savedUser && savedAuth === 'true') {
+                currentUser = savedUser;
+                isAuthenticated = true;
+                await showMainApp();
+            } else {
+                showLoginScreen();
+            }
+        }
+
+        // Gérer la connexion
+        async function handleLogin(e) {
+            e.preventDefault();
+            
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const errorDiv = document.getElementById('loginError');
+            
+            // Vérifier les identifiants
+            const user = validateCredentials(username, password);
+            if (user) {
+                // Connexion réussie
+                currentUser = username;
+                isAuthenticated = true;
+                
+                // Sauvegarder la session
+                localStorage.setItem('currentUser', username);
+                localStorage.setItem('isAuthenticated', 'true');
+                localStorage.setItem('loginTime', new Date().toISOString());
+                
+                // Masquer l'erreur et afficher l'application
+                errorDiv.classList.add('hidden');
+                await showMainApp();
+                
+                showNotification(`🎉 Bienvenue ${user.role} ${username} !`, 'success');
+                
+                // Enregistrer la connexion dans l'historique
+                addToHistory('CONNEXION', 0, 'Système', null, null, `Connexion de l'utilisateur ${username} (${user.role})`);
+                
+            } else {
+                // Connexion échouée
+                errorDiv.classList.remove('hidden');
+                document.getElementById('password').value = '';
+                
+                // Animation d'erreur
+                const loginForm = document.getElementById('loginForm');
+                loginForm.style.animation = 'shake 0.5s';
+                setTimeout(() => {
+                    loginForm.style.animation = '';
+                }, 500);
+            }
+        }
+
+        // Afficher l'écran de connexion
+        function showLoginScreen() {
+            document.getElementById('loginScreen').classList.remove('hidden');
+            document.getElementById('mainApp').classList.add('hidden');
+            document.getElementById('username').focus();
+        }
+
+        // Afficher l'application principale
+        async function showMainApp() {
+            document.getElementById('loginScreen').classList.add('hidden');
+            document.getElementById('mainApp').classList.remove('hidden');
+            
+            // Vérifier le rôle de l'utilisateur et afficher le bouton Utilisateurs seulement pour les admins
+            const user = users.find(u => u.username === currentUser);
+            if (user && user.role === 'Administrateur') {
+                document.getElementById('usersButton').classList.remove('hidden');
+            } else {
+                document.getElementById('usersButton').classList.add('hidden');
+            }
+            
+            // Charger les données depuis localStorage ou créer des données d'exemple
+            const savedAssets = localStorage.getItem('assetsData');
+            const savedNextId = localStorage.getItem('nextId');
+            
+            if (savedAssets) {
+                assets = JSON.parse(savedAssets);
+                if (savedNextId) {
+                    nextId = parseInt(savedNextId);
+                } else if (assets.length > 0) {
+                    nextId = Math.max(...assets.map(a => a.id)) + 1;
+                }
+            } else if (assets.length === 0) {
+                await loadSampleData();
+                // Sauvegarder les données d'exemple
+                localStorage.setItem('assetsData', JSON.stringify(assets));
+                localStorage.setItem('nextId', nextId.toString());
+            }
+            
+            updateStatistics();
+            renderAssets();
+        }
+
+        // Déconnexion
+        function logout() {
+            if (confirm('Êtes-vous sûr de vouloir vous déconnecter ?')) {
+                // Enregistrer la déconnexion dans l'historique
+                addToHistory('DECONNEXION', 0, 'Système', null, null, `Déconnexion de l'utilisateur ${currentUser}`);
+                
+                // Nettoyer la session
+                localStorage.removeItem('currentUser');
+                localStorage.removeItem('isAuthenticated');
+                localStorage.removeItem('loginTime');
+                
+                // Réinitialiser les variables
+                currentUser = null;
+                isAuthenticated = false;
+                
+                // Arrêter le scanner s'il est actif
+                stopQRScanner();
+                
+                // Afficher l'écran de connexion
+                showLoginScreen();
+                
+                showNotification('👋 Déconnexion réussie', 'info');
+            }
+        }
+
+        // Charger des données d'exemple
+        async function loadSampleData() {
+            const sampleAssets = [
+                {
+                    id: nextId++,
+                    reference: "MAC-001",
+                    name: "MacBook Pro 16\"",
+                    category: "Machine",
+                    value: 2499.00,
+                    date: "2024-01-15",
+                    location: "Bureau 301",
+                    responsible: "Marie Dubois",
+                    status: "En service",
+                    maintenance: "",
+                    qrCode: generateQRCodeData(nextId - 1),
+                    qrCodeImage: null
+                },
+                {
+                    id: nextId++,
+                    reference: "OUT-002",
+                    name: "Perceuse électrique",
+                    category: "Materiel et outillage",
+                    value: 450.00,
+                    date: "2023-11-20",
+                    location: "Atelier",
+                    responsible: "Pierre Martin",
+                    status: "En service",
+                    maintenance: "",
+                    qrCode: generateQRCodeData(nextId - 1),
+                    qrCodeImage: null
+                },
+                {
+                    id: nextId++,
+                    reference: "TRA-003",
+                    name: "Camionnette de livraison",
+                    category: "Materiel de transport",
+                    value: 25000.00,
+                    date: "2023-08-10",
+                    location: "Parking",
+                    responsible: "Sophie Leroy",
+                    status: "Maintenance",
+                    maintenance: "Révision générale et changement des pneus",
+                    qrCode: generateQRCodeData(nextId - 1),
+                    qrCodeImage: null
+                }
+            ];
+            
+            // Générer les QR codes réels pour les données d'exemple
+            for (let asset of sampleAssets) {
+                try {
+                    const qrResult = await generateRealQRCode(asset);
+                    asset.qrCodeImage = qrResult.image;
+                } catch (error) {
+                    console.error('Erreur génération QR pour', asset.name, ':', error);
+                    asset.qrCodeImage = null;
+                }
+            }
+            
+            assets = sampleAssets;
+
+            // Ajouter quelques entrées d'historique d'exemple
+            addToHistory('CREATION', 1, 'MacBook Pro 16"', null, sampleAssets[0], 'Création de l\'immobilisation');
+            addToHistory('CREATION', 2, 'Perceuse électrique', null, sampleAssets[1], 'Création de l\'immobilisation');
+            addToHistory('CREATION', 3, 'Camionnette de livraison', null, sampleAssets[2], 'Création de l\'immobilisation');
+            
+            // Simuler une modification sur la camionnette
+            const oldVehicle = { ...sampleAssets[2], status: 'En service', maintenance: '' };
+            addToHistory('MODIFICATION', 3, 'Camionnette de livraison', oldVehicle, sampleAssets[2], 'Statut: "En service" → "Maintenance", Maintenance: "" → "Révision générale et changement des pneus"');
+        }
+
+        // Générer les données du QR code (URL vers la page de l'immobilisation)
+        function generateQRCodeData(assetId) {
+            // Créer une URL qui pointe vers une page web avec les détails de l'immobilisation
+            const baseUrl = window.location.origin + window.location.pathname;
+            return `${baseUrl}?asset=${assetId}&view=mobile`;
+        }
+
+        // Générer un QR code réel et persistant pour une immobilisation
+        function generateRealQRCode(asset) {
+            return new Promise((resolve, reject) => {
+                // Créer un canvas temporaire pour générer le QR code
+                const tempCanvas = document.createElement('canvas');
+                const qrData = asset.qrCode || generateQRCodeData(asset.id);
+                
+                // Vérifier si la librairie QRCode est disponible
+                if (typeof QRCode !== 'undefined') {
+                    QRCode.toCanvas(tempCanvas, qrData, {
+                        width: 200,
+                        height: 200,
+                        margin: 2,
+                        color: {
+                            dark: '#1f2937',
+                            light: '#ffffff'
+                        },
+                        errorCorrectionLevel: 'H' // Haute correction d'erreur
+                    }, function (error) {
+                        if (error) {
+                            console.error('Erreur génération QR:', error);
+                            reject(error);
+                        } else {
+                            // Convertir en base64 pour stockage
+                            const qrCodeBase64 = tempCanvas.toDataURL('image/png');
+                            resolve({
+                                data: qrData,
+                                image: qrCodeBase64,
+                                canvas: tempCanvas
+                            });
+                        }
+                    });
+                } else {
+                    reject(new Error('Librairie QRCode non disponible'));
+                }
+            });
+        }
+
+        // Ajouter un actif
+        async function addAsset(e) {
+            e.preventDefault();
+            
+            const asset = {
+                id: nextId,
+                reference: document.getElementById('assetReference').value,
+                name: document.getElementById('assetName').value,
+                category: document.getElementById('assetCategory').value,
+                value: parseFloat(document.getElementById('assetValue').value),
+                date: document.getElementById('assetDate').value,
+                location: document.getElementById('assetLocation').value,
+                responsible: document.getElementById('assetResponsible').value,
+                status: document.getElementById('assetStatus').value,
+                maintenance: document.getElementById('assetMaintenance').value || "",
+                qrCode: generateQRCodeData(nextId),
+                qrCodeImage: null // Sera généré après
+            };
+
+            try {
+                // Générer le QR code réel
+                const qrResult = await generateRealQRCode(asset);
+                asset.qrCodeImage = qrResult.image;
+                
+                showNotification('✅ QR code généré avec succès !', 'success');
+            } catch (error) {
+                console.error('Erreur génération QR:', error);
+                showNotification('⚠️ QR code généré en mode simple', 'info');
+                asset.qrCodeImage = null;
+            }
+
+            // Enregistrer dans l'historique
+            addToHistory('CREATION', asset.id, asset.name, null, asset, 'Création de l\'immobilisation');
+
+            nextId++;
+            assets.push(asset);
+            
+            // Sauvegarder automatiquement dans localStorage
+            localStorage.setItem('assetsData', JSON.stringify(assets));
+            localStorage.setItem('nextId', nextId.toString());
+            
+            document.getElementById('assetForm').reset();
+            document.getElementById('maintenanceField').classList.add('hidden');
+            updateStatistics();
+            renderAssets();
+            
+            // Animation de succès
+            showNotification('✅ Immobilisation ajoutée avec succès !', 'success');
+        }
+
+        // Modifier un actif
+        function editAsset(id) {
+            const asset = assets.find(a => a.id === id);
+            if (!asset) return;
+
+            document.getElementById('editAssetId').value = asset.id;
+            document.getElementById('editAssetReference').value = asset.reference;
+            document.getElementById('editAssetName').value = asset.name;
+            document.getElementById('editAssetCategory').value = asset.category;
+            document.getElementById('editAssetValue').value = asset.value;
+            document.getElementById('editAssetDate').value = asset.date;
+            document.getElementById('editAssetLocation').value = asset.location;
+            document.getElementById('editAssetResponsible').value = asset.responsible;
+            document.getElementById('editAssetStatus').value = asset.status;
+            document.getElementById('editAssetMaintenance').value = asset.maintenance || "";
+
+            // Afficher le champ maintenance si nécessaire
+            if (asset.status === 'Maintenance') {
+                document.getElementById('editMaintenanceField').classList.remove('hidden');
+            } else {
+                document.getElementById('editMaintenanceField').classList.add('hidden');
+            }
+
+            document.getElementById('editModal').classList.remove('hidden');
+            document.getElementById('editModal').classList.add('flex');
+        }
+
+        // Mettre à jour un actif
+        function updateAsset(e) {
+            e.preventDefault();
+            
+            const id = parseInt(document.getElementById('editAssetId').value);
+            const assetIndex = assets.findIndex(a => a.id === id);
+            
+            if (assetIndex !== -1) {
+                const oldAsset = { ...assets[assetIndex] }; // Copie de l'ancien état
+                const originalQRCode = assets[assetIndex].qrCode;
+                const originalQRImage = assets[assetIndex].qrCodeImage;
+                
+                const newAsset = {
+                    id: id,
+                    reference: document.getElementById('editAssetReference').value,
+                    name: document.getElementById('editAssetName').value,
+                    category: document.getElementById('editAssetCategory').value,
+                    value: parseFloat(document.getElementById('editAssetValue').value),
+                    date: document.getElementById('editAssetDate').value,
+                    location: document.getElementById('editAssetLocation').value,
+                    responsible: document.getElementById('editAssetResponsible').value,
+                    status: document.getElementById('editAssetStatus').value,
+                    maintenance: document.getElementById('editAssetMaintenance').value || "",
+                    qrCode: originalQRCode, // Conserver le QR code original
+                    qrCodeImage: originalQRImage // Conserver l'image QR originale
+                };
+
+                // Détecter les changements et enregistrer dans l'historique
+                const changes = detectChanges(oldAsset, newAsset);
+                if (changes.length > 0) {
+                    addToHistory('MODIFICATION', id, newAsset.name, oldAsset, newAsset, changes.join(', '));
+                }
+
+                assets[assetIndex] = newAsset;
+                
+                // Sauvegarder automatiquement dans localStorage
+                localStorage.setItem('assetsData', JSON.stringify(assets));
+                
+                closeEditModal();
+                updateStatistics();
+                renderAssets();
+                showNotification('✅ Immobilisation modifiée avec succès !', 'success');
+            }
+        }
+
+        // Supprimer un actif
+        function deleteAsset(id) {
+            if (confirm('Êtes-vous sûr de vouloir supprimer cette immobilisation ?')) {
+                const asset = assets.find(a => a.id === id);
+                if (asset) {
+                    // Enregistrer dans l'historique avant suppression
+                    addToHistory('SUPPRESSION', id, asset.name, asset, null, 'Suppression de l\'immobilisation');
+                }
+                
+                assets = assets.filter(a => a.id !== id);
+                
+                // Sauvegarder automatiquement dans localStorage
+                localStorage.setItem('assetsData', JSON.stringify(assets));
+                
+                updateStatistics();
+                renderAssets();
+                showNotification('🗑️ Immobilisation supprimée', 'info');
+            }
+        }
+
+        // Fermer le modal de modification
+        function closeEditModal() {
+            document.getElementById('editModal').classList.add('hidden');
+            document.getElementById('editModal').classList.remove('flex');
+        }
+
+        // Mettre à jour les statistiques
+        function updateStatistics() {
+            const totalAssets = assets.length;
+            const activeAssets = assets.filter(a => a.status === 'En service').length;
+            const maintenanceAssets = assets.filter(a => a.status === 'Maintenance').length;
+            const retiredAssets = assets.filter(a => a.status === 'Réformé').length;
+            const totalValue = assets.reduce((sum, asset) => sum + asset.value, 0);
+
+            document.getElementById('totalAssets').textContent = totalAssets;
+            document.getElementById('activeAssets').textContent = activeAssets;
+            document.getElementById('maintenanceAssets').textContent = maintenanceAssets;
+            document.getElementById('retiredAssets').textContent = retiredAssets;
+            document.getElementById('totalValue').textContent = totalValue.toLocaleString('fr-FR') + ' €';
+        }
+
+        // Afficher les actifs
+        function renderAssets() {
+            const tbody = document.getElementById('assetTableBody');
+            const emptyState = document.getElementById('emptyState');
+            
+            if (assets.length === 0) {
+                tbody.innerHTML = '';
+                emptyState.style.display = 'block';
+                return;
+            }
+            
+            emptyState.style.display = 'none';
+            
+            tbody.innerHTML = assets.map(asset => `
+                <tr class="hover:bg-gray-50 fade-in">
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="font-medium text-blue-600">${asset.reference}</div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="font-medium text-gray-900">${asset.name}</div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="text-sm text-gray-600">${getCategoryIcon(asset.category)} ${asset.category}</span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="font-medium text-gray-900">${asset.value.toLocaleString('fr-FR')} €</span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                        ${new Date(asset.date).toLocaleDateString('fr-FR')}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                        ${asset.location || '-'}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                        ${asset.responsible || '-'}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="px-2 py-1 text-xs font-medium rounded-full ${getStatusClass(asset.status)}">
+                            ${getStatusIcon(asset.status)} ${asset.status}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 text-sm text-gray-600 max-w-xs">
+                        <div class="truncate" title="${asset.maintenance || ''}">
+                            ${asset.status === 'Maintenance' && asset.maintenance ? asset.maintenance : '-'}
+                        </div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-center">
+                        <button onclick="showQRCode(${asset.id})" class="bg-purple-100 hover:bg-purple-200 text-purple-700 px-3 py-1 rounded-lg text-sm transition duration-200">
+                            📱 QR
+                        </button>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <button onclick="editAsset(${asset.id})" class="text-blue-600 hover:text-blue-900 mr-3 transition duration-200">
+                            ✏️ Modifier
+                        </button>
+                        <button onclick="deleteAsset(${asset.id})" class="text-red-600 hover:text-red-900 transition duration-200">
+                            🗑️ Supprimer
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        // Filtrer les actifs
+        function filterAssets() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const categoryFilter = document.getElementById('categoryFilter').value;
+            const statusFilter = document.getElementById('statusFilter').value;
+
+            const filteredAssets = assets.filter(asset => {
+                const matchesSearch = asset.name.toLowerCase().includes(searchTerm) ||
+                                    asset.reference.toLowerCase().includes(searchTerm) ||
+                                    asset.responsible.toLowerCase().includes(searchTerm) ||
+                                    asset.location.toLowerCase().includes(searchTerm);
+                const matchesCategory = !categoryFilter || asset.category === categoryFilter;
+                const matchesStatus = !statusFilter || asset.status === statusFilter;
+
+                return matchesSearch && matchesCategory && matchesStatus;
+            });
+
+            // Temporairement remplacer assets pour le rendu
+            const originalAssets = assets;
+            assets = filteredAssets;
+            renderAssets();
+            assets = originalAssets;
+        }
+
+        // Utilitaires pour les icônes et styles
+        function getCategoryIcon(category) {
+            const icons = {
+                'Machine': '⚙️',
+                'Materiel de transport': '🚛',
+                'Materiel et outillage': '🔧',
+                'Autre immobilisation': '📦'
+            };
+            return icons[category] || '📦';
+        }
+
+        function getStatusIcon(status) {
+            const icons = {
+                'En service': '✅',
+                'Maintenance': '⚠️',
+                'Réformé': '🔴'
+            };
+            return icons[status] || '❓';
+        }
+
+        function getStatusClass(status) {
+            const classes = {
+                'En service': 'bg-green-100 text-green-800',
+                'Maintenance': 'bg-yellow-100 text-yellow-800',
+                'Réformé': 'bg-red-100 text-red-800'
+            };
+            return classes[status] || 'bg-gray-100 text-gray-800';
+        }
+
+        // Notification système
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            notification.className = `fixed top-4 right-4 px-6 py-3 rounded-lg shadow-lg z-50 fade-in ${
+                type === 'success' ? 'bg-green-500 text-white' :
+                type === 'error' ? 'bg-red-500 text-white' :
+                'bg-blue-500 text-white'
+            }`;
+            notification.textContent = message;
+            
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.style.opacity = '0';
+                setTimeout(() => notification.remove(), 300);
+            }, 3000);
+        }
+
+        // Ajouter une entrée à l'historique
+        function addToHistory(action, assetId, assetName, oldData, newData, description) {
+            const historyEntry = {
+                id: historyId++,
+                timestamp: new Date().toISOString(),
+                action: action,
+                assetId: assetId,
+                assetName: assetName,
+                oldData: oldData ? JSON.stringify(oldData) : null,
+                newData: newData ? JSON.stringify(newData) : null,
+                description: description,
+                user: currentUser || 'Système', // Utilisateur connecté
+                date: new Date().toLocaleDateString('fr-FR'),
+                time: new Date().toLocaleTimeString('fr-FR')
+            };
+            
+            history.push(historyEntry);
+        }
+
+        // Détecter les changements entre deux objets
+        function detectChanges(oldAsset, newAsset) {
+            const changes = [];
+            const fieldsToCheck = {
+                reference: 'Référence',
+                name: 'Désignation',
+                category: 'Catégorie',
+                value: 'Valeur',
+                date: 'Date d\'acquisition',
+                location: 'Localisation',
+                responsible: 'Responsable',
+                status: 'Statut',
+                maintenance: 'Maintenance'
+            };
+
+            for (const [field, label] of Object.entries(fieldsToCheck)) {
+                if (oldAsset[field] !== newAsset[field]) {
+                    if (field === 'value') {
+                        changes.push(`${label}: ${oldAsset[field]}€ → ${newAsset[field]}€`);
+                    } else {
+                        changes.push(`${label}: "${oldAsset[field] || ''}" → "${newAsset[field] || ''}"`);
+                    }
+                }
+            }
+
+            return changes;
+        }
+
+        // Télécharger la base de données en format Excel bien organisé
+        function downloadDatabase() {
+            if (assets.length === 0 && history.length === 0) {
+                showNotification('⚠️ Aucune donnée à télécharger', 'info');
+                return;
+            }
+
+            // Créer un fichier Excel structuré avec HTML
+            const currentDate = new Date().toLocaleDateString('fr-FR');
+            const currentTime = new Date().toLocaleTimeString('fr-FR');
+            const totalValue = assets.reduce((sum, asset) => sum + asset.value, 0);
+            
+            let htmlContent = `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Export Immobilisations - ${currentDate}</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 20px; 
+            background-color: #f8f9fa;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 10px;
+            text-align: center;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .header h1 { 
+            margin: 0; 
+            font-size: 2.5em; 
+            font-weight: bold;
+        }
+        .header p { 
+            margin: 10px 0 0 0; 
+            font-size: 1.2em; 
+            opacity: 0.9;
+        }
+        .stats-container {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 30px;
+            gap: 20px;
+        }
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            flex: 1;
+            border-left: 5px solid #667eea;
+        }
+        .stat-number {
+            font-size: 2em;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 5px;
+        }
+        .stat-label {
+            color: #666;
+            font-size: 0.9em;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .section {
+            background: white;
+            margin-bottom: 30px;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .section-header {
+            background: #667eea;
+            color: white;
+            padding: 20px;
+            font-size: 1.5em;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        table { 
+            width: 100%; 
+            border-collapse: collapse; 
+            margin: 0;
+        }
+        th { 
+            background: #f8f9fa; 
+            padding: 15px 12px; 
+            text-align: left; 
+            font-weight: bold;
+            color: #495057;
+            border-bottom: 2px solid #dee2e6;
+            font-size: 0.9em;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        td { 
+            padding: 12px; 
+            border-bottom: 1px solid #dee2e6;
+            vertical-align: top;
+        }
+        tr:nth-child(even) { 
+            background-color: #f8f9fa; 
+        }
+        tr:hover {
+            background-color: #e3f2fd;
+        }
+        .status-badge {
+            padding: 4px 8px;
+            border-radius: 20px;
+            font-size: 0.8em;
+            font-weight: bold;
+            text-align: center;
+            display: inline-block;
+            min-width: 80px;
+        }
+        .status-en-service { background: #d4edda; color: #155724; }
+        .status-maintenance { background: #fff3cd; color: #856404; }
+        .status-reforme { background: #f8d7da; color: #721c24; }
+        .action-badge {
+            padding: 4px 8px;
+            border-radius: 15px;
+            font-size: 0.8em;
+            font-weight: bold;
+            text-align: center;
+            display: inline-block;
+            min-width: 100px;
+        }
+        .action-creation { background: #d1ecf1; color: #0c5460; }
+        .action-modification { background: #cce5ff; color: #004085; }
+        .action-suppression { background: #f8d7da; color: #721c24; }
+        .value-cell {
+            text-align: right;
+            font-weight: bold;
+            color: #28a745;
+        }
+        .date-cell {
+            font-family: monospace;
+            color: #6c757d;
+        }
+        .footer {
+            text-align: center;
+            color: #6c757d;
+            margin-top: 30px;
+            padding: 20px;
+            border-top: 2px solid #dee2e6;
+            font-size: 0.9em;
+        }
+        .maintenance-text {
+            max-width: 200px;
+            word-wrap: break-word;
+            font-style: italic;
+            color: #856404;
+        }
+        .qr-code {
+            font-family: monospace;
+            font-size: 0.8em;
+            color: #6c757d;
+            max-width: 150px;
+            word-break: break-all;
+        }
+        @media print {
+            body { margin: 0; }
+            .section { page-break-inside: avoid; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>📊 SUIVI DES IMMOBILISATIONS</h1>
+        <p>Export généré le ${currentDate} à ${currentTime}</p>
+        <p>Utilisateur: ${currentUser || 'Système'}</p>
+    </div>
+
+    <div class="stats-container">
+        <div class="stat-card">
+            <div class="stat-number">${assets.length}</div>
+            <div class="stat-label">Total Immobilisations</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number">${assets.filter(a => a.status === 'En service').length}</div>
+            <div class="stat-label">En Service</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number">${assets.filter(a => a.status === 'Maintenance').length}</div>
+            <div class="stat-label">En Maintenance</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number">${totalValue.toLocaleString('fr-FR')} €</div>
+            <div class="stat-label">Valeur Totale</div>
+        </div>
+    </div>
+
+    <div class="section">
+        <div class="section-header">
+            💼 TABLEAU DES IMMOBILISATIONS
+        </div>
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Référence</th>
+                    <th>Désignation</th>
+                    <th>Catégorie</th>
+                    <th>Valeur (€)</th>
+                    <th>Date d'acquisition</th>
+                    <th>Localisation</th>
+                    <th>Responsable</th>
+                    <th>Statut</th>
+                    <th>Maintenance</th>
+                    <th>Code QR</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${assets.map(asset => `
+                    <tr>
+                        <td><strong>${asset.id}</strong></td>
+                        <td><strong>${asset.reference}</strong></td>
+                        <td>${asset.name}</td>
+                        <td>${getCategoryIcon(asset.category)} ${asset.category}</td>
+                        <td class="value-cell">${asset.value.toLocaleString('fr-FR')} €</td>
+                        <td class="date-cell">${new Date(asset.date).toLocaleDateString('fr-FR')}</td>
+                        <td>${asset.location || '-'}</td>
+                        <td>${asset.responsible || '-'}</td>
+                        <td>
+                            <span class="status-badge status-${asset.status.toLowerCase().replace(' ', '-').replace('é', 'e')}">
+                                ${getStatusIcon(asset.status)} ${asset.status}
+                            </span>
+                        </td>
+                        <td class="maintenance-text">${asset.maintenance || '-'}</td>
+                        <td class="qr-code">${asset.qrCode || '-'}</td>
+                    </tr>
+                `).join('')}
+            </tbody>
+        </table>
+    </div>
+
+    ${history.length > 0 ? `
+    <div class="section">
+        <div class="section-header">
+            📜 HISTORIQUE DES MODIFICATIONS
+        </div>
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Date/Heure</th>
+                    <th>Action</th>
+                    <th>Immobilisation</th>
+                    <th>Utilisateur</th>
+                    <th>Description des changements</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${history.slice().reverse().map(entry => `
+                    <tr>
+                        <td><strong>${entry.id}</strong></td>
+                        <td class="date-cell">
+                            ${entry.date}<br>
+                            <small>${entry.time}</small>
+                        </td>
+                        <td>
+                            <span class="action-badge action-${entry.action.toLowerCase()}">
+                                ${getActionIcon(entry.action)} ${entry.action}
+                            </span>
+                        </td>
+                        <td>
+                            <strong>${entry.assetName}</strong><br>
+                            <small>ID: ${entry.assetId}</small>
+                        </td>
+                        <td><strong>${entry.user}</strong></td>
+                        <td>${entry.description}</td>
+                    </tr>
+                `).join('')}
+            </tbody>
+        </table>
+    </div>
+    ` : ''}
+
+    <div class="footer">
+        <p><strong>📊 Suivi des Immobilisations</strong></p>
+        <p>Document généré automatiquement le ${currentDate} à ${currentTime}</p>
+        <p>Total: ${assets.length} immobilisations • Valeur: ${totalValue.toLocaleString('fr-FR')} € • Historique: ${history.length} entrées</p>
+    </div>
+</body>
+</html>`;
+
+            // Créer le fichier HTML et le télécharger
+            const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            
+            link.setAttribute('href', url);
+            link.setAttribute('download', `Immobilisations_Export_${new Date().toISOString().split('T')[0]}.html`);
+            link.style.visibility = 'hidden';
+            
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            showNotification(`📥 Export Excel généré avec ${assets.length} immobilisations et ${history.length} entrées d'historique !`, 'success');
+        }
+
+        // Afficher/masquer le champ maintenance dans le formulaire d'ajout
+        function toggleMaintenanceField() {
+            const status = document.getElementById('assetStatus').value;
+            const maintenanceField = document.getElementById('maintenanceField');
+            
+            if (status === 'Maintenance') {
+                maintenanceField.classList.remove('hidden');
+            } else {
+                maintenanceField.classList.add('hidden');
+                document.getElementById('assetMaintenance').value = '';
+            }
+        }
+
+        // Afficher/masquer le champ maintenance dans le modal de modification
+        function toggleEditMaintenanceField() {
+            const status = document.getElementById('editAssetStatus').value;
+            const maintenanceField = document.getElementById('editMaintenanceField');
+            
+            if (status === 'Maintenance') {
+                maintenanceField.classList.remove('hidden');
+            } else {
+                maintenanceField.classList.add('hidden');
+                document.getElementById('editAssetMaintenance').value = '';
+            }
+        }
+
+        // Afficher le QR code
+        async function showQRCode(assetId) {
+            const asset = assets.find(a => a.id === assetId);
+            if (!asset) {
+                showNotification('❌ Immobilisation introuvable', 'error');
+                return;
+            }
+
+            const canvas = document.getElementById('qrDisplayCanvas');
+            const assetInfo = document.getElementById('qrAssetInfo');
+            
+            // Afficher d'abord le modal
+            document.getElementById('qrModal').classList.remove('hidden');
+            document.getElementById('qrModal').classList.add('flex');
+            
+            // Afficher les informations de l'actif
+            assetInfo.innerHTML = `
+                <div class="bg-gray-50 rounded-lg p-4 mb-4">
+                    <div class="font-bold text-lg text-gray-800 mb-2">${asset.name}</div>
+                    <div class="text-sm text-gray-600 mb-1">
+                        <span class="font-medium">Référence:</span> ${asset.reference}
+                    </div>
+                    <div class="text-sm text-gray-600 mb-1">
+                        <span class="font-medium">Catégorie:</span> ${getCategoryIcon(asset.category)} ${asset.category}
+                    </div>
+                    <div class="text-sm text-gray-600 mb-1">
+                        <span class="font-medium">Valeur:</span> ${asset.value.toLocaleString('fr-FR')} €
+                    </div>
+                    <div class="text-sm text-gray-600 mb-1">
+                        <span class="font-medium">Statut:</span> 
+                        <span class="px-2 py-1 text-xs rounded-full ${getStatusClass(asset.status)}">
+                            ${getStatusIcon(asset.status)} ${asset.status}
+                        </span>
+                    </div>
+                    <div class="text-sm text-gray-600 mb-1">
+                        <span class="font-medium">URL QR:</span> 
+                        <code class="text-xs bg-gray-200 px-1 rounded">${asset.qrCode}</code>
+                    </div>
+                    <div class="text-xs text-gray-500 mt-2">
+                        📱 Scannez ce QR code pour accéder aux détails
+                    </div>
+                </div>
+            `;
+            
+            // Utiliser le QR code déjà généré s'il existe
+            if (asset.qrCodeImage) {
+                // Afficher le QR code depuis l'image stockée
+                const ctx = canvas.getContext('2d');
+                const img = new Image();
+                img.onload = function() {
+                    canvas.width = 200;
+                    canvas.height = 200;
+                    ctx.drawImage(img, 0, 0, 200, 200);
+                    showNotification('✅ QR code affiché !', 'success');
+                };
+                img.src = asset.qrCodeImage;
+            } else {
+                // Générer un nouveau QR code réel
+                try {
+                    const qrResult = await generateRealQRCode(asset);
+                    asset.qrCodeImage = qrResult.image; // Sauvegarder pour la prochaine fois
+                    
+                    // Afficher le QR code
+                    const ctx = canvas.getContext('2d');
+                    const img = new Image();
+                    img.onload = function() {
+                        canvas.width = 200;
+                        canvas.height = 200;
+                        ctx.drawImage(img, 0, 0, 200, 200);
+                        showNotification('✅ QR code généré et affiché !', 'success');
+                    };
+                    img.src = asset.qrCodeImage;
+                    
+                } catch (error) {
+                    console.error('Erreur génération QR:', error);
+                    generateFallbackQR(canvas, asset);
+                    showNotification('⚠️ QR code généré en mode simple', 'info');
+                }
+            }
+        }
+
+        // Générer un QR code de fallback visuel
+        function generateFallbackQR(canvas, asset) {
+            const ctx = canvas.getContext('2d');
+            const size = 200;
+            
+            // Fond blanc
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, size, size);
+            
+            // Bordure
+            ctx.strokeStyle = '#1f2937';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(1, 1, size-2, size-2);
+            
+            // Motif QR simplifié (carrés dans les coins)
+            ctx.fillStyle = '#1f2937';
+            
+            // Coin supérieur gauche
+            ctx.fillRect(10, 10, 30, 30);
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(15, 15, 20, 20);
+            ctx.fillStyle = '#1f2937';
+            ctx.fillRect(20, 20, 10, 10);
+            
+            // Coin supérieur droit
+            ctx.fillRect(160, 10, 30, 30);
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(165, 15, 20, 20);
+            ctx.fillStyle = '#1f2937';
+            ctx.fillRect(170, 20, 10, 10);
+            
+            // Coin inférieur gauche
+            ctx.fillRect(10, 160, 30, 30);
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(15, 165, 20, 20);
+            ctx.fillStyle = '#1f2937';
+            ctx.fillRect(20, 170, 10, 10);
+            
+            // Motif central simplifié
+            for (let i = 0; i < 10; i++) {
+                for (let j = 0; j < 10; j++) {
+                    if ((i + j) % 2 === 0) {
+                        ctx.fillRect(60 + i * 8, 60 + j * 8, 6, 6);
+                    }
+                }
+            }
+            
+            // Texte informatif
+            ctx.fillStyle = '#374151';
+            ctx.font = 'bold 14px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('QR CODE', size/2, 55);
+            
+            ctx.font = '12px Arial';
+            ctx.fillText(asset.reference, size/2, 155);
+            
+            ctx.font = '10px Arial';
+            ctx.fillText('Scannez pour', size/2, 175);
+            ctx.fillText('voir les détails', size/2, 185);
+        }
+
+        // Fermer le modal QR code
+        function closeQRModal() {
+            document.getElementById('qrModal').classList.add('hidden');
+            document.getElementById('qrModal').classList.remove('flex');
+        }
+
+        // Télécharger le QR code
+        function downloadQRCode() {
+            const canvas = document.getElementById('qrDisplayCanvas');
+            const link = document.createElement('a');
+            link.download = `qr-code-${Date.now()}.png`;
+            link.href = canvas.toDataURL();
+            link.click();
+            showNotification('📥 QR code téléchargé !', 'success');
+        }
+
+        // Imprimer le QR code
+        function printQRCode() {
+            const canvas = document.getElementById('qrDisplayCanvas');
+            const assetInfo = document.getElementById('qrAssetInfo').innerHTML;
+            
+            const printWindow = window.open('', '_blank');
+            printWindow.document.write(`
+                <html>
+                    <head>
+                        <title>QR Code - Immobilisation</title>
+                        <style>
+                            body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
+                            .qr-container { margin: 20px 0; }
+                            .asset-info { margin: 20px 0; font-size: 14px; }
+                        </style>
+                    </head>
+                    <body>
+                        <h2>QR Code - Immobilisation</h2>
+                        <div class="qr-container">
+                            <img src="${canvas.toDataURL()}" alt="QR Code">
+                        </div>
+                        <div class="asset-info">${assetInfo}</div>
+                    </body>
+                </html>
+            `);
+            printWindow.document.close();
+            printWindow.print();
+            showNotification('🖨️ QR code envoyé à l\'imprimante !', 'success');
+        }
+
+        // Rechercher par QR code
+        function searchByQRCode() {
+            const qrCode = document.getElementById('qrCodeInput').value.trim();
+            if (!qrCode) {
+                showNotification('⚠️ Veuillez entrer un code QR', 'info');
+                return;
+            }
+
+            const asset = assets.find(a => a.qrCode === qrCode);
+            if (asset) {
+                // Ouvrir directement le modal de modification
+                editAsset(asset.id);
+                showNotification('✅ Immobilisation trouvée !', 'success');
+            } else {
+                showNotification('❌ Aucune immobilisation trouvée avec ce code QR', 'error');
+            }
+        }
+
+        // Effacer la recherche QR
+        function clearQRSearch() {
+            document.getElementById('qrCodeInput').value = '';
+            showNotification('🧹 Recherche effacée', 'info');
+        }
+
+        // Démarrer le scanner QR
+        async function startQRScanner() {
+            try {
+                const video = document.getElementById('qrVideo');
+                const canvas = document.getElementById('qrCanvas');
+                const scannerContainer = document.getElementById('scannerContainer');
+                
+                // Demander l'accès à la caméra
+                scannerStream = await navigator.mediaDevices.getUserMedia({
+                    video: { 
+                        facingMode: 'environment', // Caméra arrière si disponible
+                        width: { ideal: 640 },
+                        height: { ideal: 480 }
+                    }
+                });
+                
+                video.srcObject = scannerStream;
+                scannerContainer.classList.remove('hidden');
+                
+                // Démarrer la détection QR
+                qrScanner = setInterval(() => {
+                    scanQRCode(video, canvas);
+                }, 100);
+                
+                showNotification('📷 Scanner démarré ! Pointez vers un QR code', 'success');
+                
+            } catch (error) {
+                console.error('Erreur d\'accès à la caméra:', error);
+                showNotification('❌ Impossible d\'accéder à la caméra. Vérifiez les permissions.', 'error');
+            }
+        }
+
+        // Arrêter le scanner QR
+        function stopQRScanner() {
+            if (qrScanner) {
+                clearInterval(qrScanner);
+                qrScanner = null;
+            }
+            
+            if (scannerStream) {
+                scannerStream.getTracks().forEach(track => track.stop());
+                scannerStream = null;
+            }
+            
+            const video = document.getElementById('qrVideo');
+            const scannerContainer = document.getElementById('scannerContainer');
+            
+            video.srcObject = null;
+            scannerContainer.classList.add('hidden');
+            
+            showNotification('📷 Scanner arrêté', 'info');
+        }
+
+        // Scanner le QR code depuis la vidéo
+        function scanQRCode(video, canvas) {
+            if (video.readyState === video.HAVE_ENOUGH_DATA) {
+                const context = canvas.getContext('2d');
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                
+                context.drawImage(video, 0, 0, canvas.width, canvas.height);
+                
+                const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+                const code = jsQR(imageData.data, imageData.width, imageData.height);
+                
+                if (code) {
+                    // QR code détecté !
+                    document.getElementById('qrCodeInput').value = code.data;
+                    stopQRScanner();
+                    
+                    // Rechercher automatiquement l'immobilisation
+                    const asset = assets.find(a => a.qrCode === code.data);
+                    if (asset) {
+                        editAsset(asset.id);
+                        showNotification('✅ QR code scanné ! Immobilisation trouvée', 'success');
+                    } else {
+                        showNotification('⚠️ QR code scanné mais aucune immobilisation correspondante', 'info');
+                    }
+                }
+            }
+        }
+
+        // Afficher le modal historique
+        function showHistoryModal() {
+            renderHistory();
+            document.getElementById('historyModal').classList.remove('hidden');
+            document.getElementById('historyModal').classList.add('flex');
+        }
+
+        // Fermer le modal historique
+        function closeHistoryModal() {
+            document.getElementById('historyModal').classList.add('hidden');
+            document.getElementById('historyModal').classList.remove('flex');
+        }
+
+        // Afficher l'historique
+        function renderHistory() {
+            const tbody = document.getElementById('historyTableBody');
+            const emptyState = document.getElementById('historyEmptyState');
+            
+            if (history.length === 0) {
+                tbody.innerHTML = '';
+                emptyState.classList.remove('hidden');
+                return;
+            }
+            
+            emptyState.classList.add('hidden');
+            
+            // Trier l'historique par date décroissante (plus récent en premier)
+            const sortedHistory = [...history].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+            
+            tbody.innerHTML = sortedHistory.map(entry => `
+                <tr class="hover:bg-gray-50">
+                    <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-600">
+                        ${entry.date}<br>
+                        <span class="text-xs text-gray-400">${entry.time}</span>
+                    </td>
+                    <td class="px-4 py-2 whitespace-nowrap">
+                        <span class="px-2 py-1 text-xs font-medium rounded-full ${getActionClass(entry.action)}">
+                            ${getActionIcon(entry.action)} ${entry.action}
+                        </span>
+                    </td>
+                    <td class="px-4 py-2 text-sm">
+                        <div class="font-medium text-gray-900">${entry.assetName}</div>
+                        <div class="text-xs text-gray-500">ID: ${entry.assetId}</div>
+                    </td>
+                    <td class="px-4 py-2 text-sm text-gray-600">
+                        ${entry.user}
+                    </td>
+                    <td class="px-4 py-2 text-sm text-gray-600 max-w-md">
+                        <div class="truncate" title="${entry.description}">
+                            ${entry.description}
+                        </div>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        // Utilitaires pour l'historique
+        function getActionIcon(action) {
+            const icons = {
+                'CREATION': '➕',
+                'MODIFICATION': '✏️',
+                'SUPPRESSION': '🗑️'
+            };
+            return icons[action] || '📝';
+        }
+
+        function getActionClass(action) {
+            const classes = {
+                'CREATION': 'bg-green-100 text-green-800',
+                'MODIFICATION': 'bg-blue-100 text-blue-800',
+                'SUPPRESSION': 'bg-red-100 text-red-800'
+            };
+            return classes[action] || 'bg-gray-100 text-gray-800';
+        }
+
+        // Fermer les modals en cliquant à l'extérieur
+        document.getElementById('editModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeEditModal();
+            }
+        });
+
+        document.getElementById('qrModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeQRModal();
+            }
+        });
+
+        document.getElementById('historyModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeHistoryModal();
+            }
+        });
+
+        document.getElementById('usersModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeUsersModal();
+            }
+        });
+
+        // === FONCTIONS DE GESTION DES UTILISATEURS ===
+
+        // Afficher le modal de gestion des utilisateurs
+        function showUsersModal() {
+            // Vérifier que l'utilisateur est administrateur
+            const user = users.find(u => u.username === currentUser);
+            if (!user || user.role !== 'Administrateur') {
+                showNotification('❌ Accès refusé : Seuls les administrateurs peuvent gérer les utilisateurs', 'error');
+                return;
+            }
+            
+            renderUsers();
+            document.getElementById('usersModal').classList.remove('hidden');
+            document.getElementById('usersModal').classList.add('flex');
+        }
+
+        // Fermer le modal de gestion des utilisateurs
+        function closeUsersModal() {
+            document.getElementById('usersModal').classList.add('hidden');
+            document.getElementById('usersModal').classList.remove('flex');
+        }
+
+        // Ajouter un utilisateur
+        function addUser(e) {
+            e.preventDefault();
+            
+            // Vérifier que l'utilisateur est administrateur
+            const currentUserObj = users.find(u => u.username === currentUser);
+            if (!currentUserObj || currentUserObj.role !== 'Administrateur') {
+                showNotification('❌ Accès refusé : Seuls les administrateurs peuvent ajouter des utilisateurs', 'error');
+                return;
+            }
+            
+            const username = document.getElementById('newUsername').value.trim();
+            const password = document.getElementById('newPassword').value;
+            const role = document.getElementById('newUserRole').value;
+            
+            // Vérifier si l'utilisateur existe déjà
+            if (users.find(u => u.username === username)) {
+                showNotification('❌ Ce nom d\'utilisateur existe déjà', 'error');
+                return;
+            }
+            
+            // Créer le nouvel utilisateur
+            const newUser = {
+                id: nextUserId++,
+                username: username,
+                password: password,
+                role: role,
+                createdDate: new Date().toISOString()
+            };
+            
+            users.push(newUser);
+            saveUsers();
+            
+            // Enregistrer dans l'historique
+            addToHistory('CREATION_UTILISATEUR', 0, 'Système', null, null, `Création de l'utilisateur ${username} avec le rôle ${role}`);
+            
+            // Réinitialiser le formulaire
+            document.getElementById('addUserForm').reset();
+            
+            // Rafraîchir l'affichage
+            renderUsers();
+            
+            showNotification(`✅ Utilisateur ${username} créé avec succès !`, 'success');
+        }
+
+        // Supprimer un utilisateur
+        function deleteUser(userId) {
+            // Vérifier que l'utilisateur est administrateur
+            const currentUserObj = users.find(u => u.username === currentUser);
+            if (!currentUserObj || currentUserObj.role !== 'Administrateur') {
+                showNotification('❌ Accès refusé : Seuls les administrateurs peuvent supprimer des utilisateurs', 'error');
+                return;
+            }
+            
+            const user = users.find(u => u.id === userId);
+            if (!user) return;
+            
+            // Empêcher la suppression de l'utilisateur connecté
+            if (user.username === currentUser) {
+                showNotification('❌ Vous ne pouvez pas supprimer votre propre compte', 'error');
+                return;
+            }
+            
+            if (confirm(`Êtes-vous sûr de vouloir supprimer l'utilisateur "${user.username}" ?`)) {
+                // Enregistrer dans l'historique avant suppression
+                addToHistory('SUPPRESSION_UTILISATEUR', 0, 'Système', user, null, `Suppression de l'utilisateur ${user.username} (${user.role})`);
+                
+                users = users.filter(u => u.id !== userId);
+                saveUsers();
+                renderUsers();
+                
+                showNotification(`🗑️ Utilisateur ${user.username} supprimé`, 'info');
+            }
+        }
+
+        // Afficher les utilisateurs
+        function renderUsers() {
+            const tbody = document.getElementById('usersTableBody');
+            const emptyState = document.getElementById('usersEmptyState');
+            
+            if (users.length === 0) {
+                tbody.innerHTML = '';
+                emptyState.classList.remove('hidden');
+                return;
+            }
+            
+            emptyState.classList.add('hidden');
+            
+            tbody.innerHTML = users.map(user => `
+                <tr class="hover:bg-gray-50">
+                    <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-600">
+                        ${user.id}
+                    </td>
+                    <td class="px-4 py-2 whitespace-nowrap">
+                        <div class="font-medium text-gray-900">${user.username}</div>
+                        ${user.username === currentUser ? '<span class="text-xs text-green-600">👤 Connecté</span>' : ''}
+                    </td>
+                    <td class="px-4 py-2 whitespace-nowrap">
+                        <span class="px-2 py-1 text-xs font-medium rounded-full ${getRoleClass(user.role)}">
+                            ${getRoleIcon(user.role)} ${user.role}
+                        </span>
+                    </td>
+                    <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-600">
+                        ${new Date(user.createdDate).toLocaleDateString('fr-FR')}
+                    </td>
+                    <td class="px-4 py-2 whitespace-nowrap text-sm font-medium">
+                        ${user.username !== currentUser ? `
+                            <button onclick="deleteUser(${user.id})" class="text-red-600 hover:text-red-900 transition duration-200">
+                                🗑️ Supprimer
+                            </button>
+                        ` : '<span class="text-gray-400">👤 Compte actuel</span>'}
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        // Utilitaires pour les rôles
+        function getRoleIcon(role) {
+            const icons = {
+                'Utilisateur': '👤',
+                'Gestionnaire': '👨‍💼',
+                'Administrateur': '👑'
+            };
+            return icons[role] || '👤';
+        }
+
+        function getRoleClass(role) {
+            const classes = {
+                'Utilisateur': 'bg-blue-100 text-blue-800',
+                'Gestionnaire': 'bg-green-100 text-green-800',
+                'Administrateur': 'bg-purple-100 text-purple-800'
+            };
+            return classes[role] || 'bg-gray-100 text-gray-800';
+        }
+
+        // === FONCTIONS POUR LA VUE MOBILE ===
+
+        // Afficher l'écran de connexion mobile
+        function showMobileLoginScreen(assetId) {
+            loadUsers(); // Charger les utilisateurs
+            document.getElementById('mobileAssetId').value = assetId;
+            document.getElementById('mobileLoginScreen').classList.remove('hidden');
+            document.getElementById('mobileUsername').focus();
+        }
+
+        // Gérer la connexion mobile
+        async function handleMobileLogin(e) {
+            e.preventDefault();
+            
+            const username = document.getElementById('mobileUsername').value;
+            const password = document.getElementById('mobilePassword').value;
+            const assetId = parseInt(document.getElementById('mobileAssetId').value);
+            const errorDiv = document.getElementById('mobileLoginError');
+            
+            // Vérifier les identifiants
+            const user = validateCredentials(username, password);
+            if (user) {
+                // Connexion réussie
+                currentUser = username;
+                isAuthenticated = true;
+                
+                // Masquer l'erreur et afficher la vue mobile
+                errorDiv.classList.add('hidden');
+                document.getElementById('mobileLoginScreen').classList.add('hidden');
+                
+                // Enregistrer la connexion dans l'historique
+                addToHistory('CONNEXION_MOBILE', assetId, 'Système', null, null, `Connexion mobile de l'utilisateur ${username} (${user.role}) pour l'immobilisation ID ${assetId}`);
+                
+                await showMobileView(assetId);
+                showMobileNotification(`🎉 Bienvenue ${user.role} ${username} !`, 'success');
+                
+            } else {
+                // Connexion échouée
+                errorDiv.classList.remove('hidden');
+                document.getElementById('mobilePassword').value = '';
+                
+                // Animation d'erreur
+                const loginForm = document.getElementById('mobileLoginForm');
+                loginForm.style.animation = 'shake 0.5s';
+                setTimeout(() => {
+                    loginForm.style.animation = '';
+                }, 500);
+            }
+        }
+
+        // Afficher la vue mobile pour un actif spécifique
+        async function showMobileView(assetId) {
+            // Charger les données depuis le localStorage ou créer des données d'exemple
+            const savedAssets = localStorage.getItem('assetsData');
+            if (savedAssets) {
+                assets = JSON.parse(savedAssets);
+                // Restaurer nextId
+                if (assets.length > 0) {
+                    nextId = Math.max(...assets.map(a => a.id)) + 1;
+                }
+            } else if (assets.length === 0) {
+                await loadSampleData();
+                // Sauvegarder les données d'exemple
+                localStorage.setItem('assetsData', JSON.stringify(assets));
+            }
+            
+            const asset = assets.find(a => a.id === assetId);
+            if (!asset) {
+                document.body.innerHTML = `
+                    <div class="min-h-screen bg-gradient-to-br from-red-50 to-red-100 flex items-center justify-center">
+                        <div class="bg-white rounded-xl shadow-lg p-8 m-4 max-w-md w-full text-center">
+                            <div class="text-6xl mb-4">❌</div>
+                            <h2 class="text-2xl font-bold text-gray-800 mb-4">Immobilisation introuvable</h2>
+                            <p class="text-gray-600 mb-6">L'immobilisation demandée n'existe pas ou a été supprimée.</p>
+                            <button onclick="viewFullSystem()" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-6 rounded-lg transition duration-200">
+                                💻 Accéder au système complet
+                            </button>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+
+            // Afficher la vue mobile
+            document.getElementById('mobileView').classList.remove('hidden');
+            document.getElementById('loginScreen').classList.add('hidden');
+            document.getElementById('mainApp').classList.add('hidden');
+
+            // Remplir les informations de l'immobilisation
+            const mobileAssetInfo = document.getElementById('mobileAssetInfo');
+            mobileAssetInfo.innerHTML = `
+                <div class="text-center mb-6">
+                    <div class="text-5xl mb-3">${getCategoryIcon(asset.category)}</div>
+                    <h2 class="text-2xl font-bold text-gray-800 mb-2">${asset.name}</h2>
+                    <p class="text-gray-600">${asset.reference}</p>
+                </div>
+                
+                <div class="space-y-4">
+                    <div class="flex justify-between items-center py-3 border-b border-gray-100">
+                        <span class="text-gray-600 font-medium">Catégorie</span>
+                        <span class="text-gray-800">${asset.category}</span>
+                    </div>
+                    
+                    <div class="flex justify-between items-center py-3 border-b border-gray-100">
+                        <span class="text-gray-600 font-medium">Valeur</span>
+                        <span class="text-gray-800 font-semibold">${asset.value.toLocaleString('fr-FR')} €</span>
+                    </div>
+                    
+                    <div class="flex justify-between items-center py-3 border-b border-gray-100">
+                        <span class="text-gray-600 font-medium">Date d'acquisition</span>
+                        <span class="text-gray-800">${new Date(asset.date).toLocaleDateString('fr-FR')}</span>
+                    </div>
+                    
+                    <div class="flex justify-between items-center py-3 border-b border-gray-100">
+                        <span class="text-gray-600 font-medium">Localisation</span>
+                        <span class="text-gray-800">${asset.location || 'Non définie'}</span>
+                    </div>
+                    
+                    <div class="flex justify-between items-center py-3 border-b border-gray-100">
+                        <span class="text-gray-600 font-medium">Responsable</span>
+                        <span class="text-gray-800">${asset.responsible || 'Non défini'}</span>
+                    </div>
+                    
+                    <div class="flex justify-between items-center py-3 border-b border-gray-100">
+                        <span class="text-gray-600 font-medium">Statut</span>
+                        <span class="px-3 py-1 text-sm font-medium rounded-full ${getStatusClass(asset.status)}">
+                            ${getStatusIcon(asset.status)} ${asset.status}
+                        </span>
+                    </div>
+                    
+                    ${asset.status === 'Maintenance' && asset.maintenance ? `
+                        <div class="py-3 border-b border-gray-100">
+                            <span class="text-gray-600 font-medium block mb-2">Maintenance</span>
+                            <span class="text-gray-800 text-sm bg-yellow-50 p-3 rounded-lg block">${asset.maintenance}</span>
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+
+            // Event listeners pour les formulaires mobiles
+            document.getElementById('mobileEditFormElement').addEventListener('submit', handleMobileEdit);
+            document.getElementById('mobileIssueFormElement').addEventListener('submit', handleMobileIssueReport);
+        }
+
+        // Afficher le formulaire de modification mobile
+        function showMobileEditForm() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const assetId = parseInt(urlParams.get('asset'));
+            const asset = assets.find(a => a.id === assetId);
+            
+            if (!asset) return;
+
+            // Remplir le formulaire
+            document.getElementById('mobileEditAssetId').value = asset.id;
+            document.getElementById('mobileEditLocation').value = asset.location || '';
+            document.getElementById('mobileEditResponsible').value = asset.responsible || '';
+            document.getElementById('mobileEditStatus').value = asset.status;
+            document.getElementById('mobileEditMaintenance').value = asset.maintenance || '';
+
+            // Afficher le champ maintenance si nécessaire
+            if (asset.status === 'Maintenance') {
+                document.getElementById('mobileMaintenanceField').classList.remove('hidden');
+            }
+
+            // Afficher le formulaire
+            document.getElementById('mobileEditForm').classList.remove('hidden');
+            document.getElementById('mobileActions').classList.add('hidden');
+        }
+
+        // Masquer le formulaire de modification mobile
+        function hideMobileEditForm() {
+            document.getElementById('mobileEditForm').classList.add('hidden');
+            document.getElementById('mobileActions').classList.remove('hidden');
+        }
+
+        // Gérer la modification mobile
+        function handleMobileEdit(e) {
+            e.preventDefault();
+            
+            const assetId = parseInt(document.getElementById('mobileEditAssetId').value);
+            const assetIndex = assets.findIndex(a => a.id === assetId);
+            
+            if (assetIndex !== -1) {
+                const oldAsset = { ...assets[assetIndex] };
+                
+                // Mettre à jour seulement les champs modifiables en mobile
+                assets[assetIndex].location = document.getElementById('mobileEditLocation').value;
+                assets[assetIndex].responsible = document.getElementById('mobileEditResponsible').value;
+                assets[assetIndex].status = document.getElementById('mobileEditStatus').value;
+                assets[assetIndex].maintenance = document.getElementById('mobileEditMaintenance').value || '';
+
+                // Enregistrer dans l'historique
+                const changes = detectChanges(oldAsset, assets[assetIndex]);
+                if (changes.length > 0) {
+                    addToHistory('MODIFICATION', assetId, assets[assetIndex].name, oldAsset, assets[assetIndex], changes.join(', ') + ' (via mobile)');
+                }
+
+                // Sauvegarder dans le localStorage pour persistance
+                localStorage.setItem('assetsData', JSON.stringify(assets));
+                
+                hideMobileEditForm();
+                showMobileView(assetId); // Rafraîchir l'affichage
+                showMobileNotification('✅ Modifications sauvegardées !', 'success');
+            }
+        }
+
+        // Afficher le formulaire de signalement
+        function reportIssue() {
+            document.getElementById('mobileIssueForm').classList.remove('hidden');
+            document.getElementById('mobileActions').classList.add('hidden');
+        }
+
+        // Masquer le formulaire de signalement
+        function hideMobileIssueForm() {
+            document.getElementById('mobileIssueForm').classList.add('hidden');
+            document.getElementById('mobileActions').classList.remove('hidden');
+        }
+
+        // Gérer le signalement de problème
+        function handleMobileIssueReport(e) {
+            e.preventDefault();
+            
+            const urlParams = new URLSearchParams(window.location.search);
+            const assetId = parseInt(urlParams.get('asset'));
+            const asset = assets.find(a => a.id === assetId);
+            
+            const issueType = document.getElementById('mobileIssueType').value;
+            const description = document.getElementById('mobileIssueDescription').value;
+            const reporterName = document.getElementById('mobileReporterName').value || 'Anonyme';
+            
+            // Enregistrer le signalement dans l'historique
+            const issueDescription = `Signalement ${issueType}: ${description} (Rapporté par: ${reporterName})`;
+            addToHistory('SIGNALEMENT', assetId, asset.name, null, null, issueDescription);
+            
+            // Si c'est une maintenance, mettre à jour le statut
+            if (issueType === 'Maintenance' || issueType === 'Panne') {
+                const oldAsset = { ...asset };
+                asset.status = 'Maintenance';
+                asset.maintenance = `${issueType}: ${description}`;
+                
+                addToHistory('MODIFICATION', assetId, asset.name, oldAsset, asset, `Statut changé en "Maintenance" suite au signalement (via mobile)`);
+            }
+            
+            // Sauvegarder
+            localStorage.setItem('assetsData', JSON.stringify(assets));
+            
+            hideMobileIssueForm();
+            showMobileView(assetId); // Rafraîchir l'affichage
+            showMobileNotification('📤 Signalement envoyé ! Merci pour votre retour.', 'success');
+        }
+
+        // Accéder au système complet
+        function viewFullSystem() {
+            // Supprimer les paramètres URL et recharger
+            window.location.href = window.location.pathname;
+        }
+
+        // Afficher/masquer le champ maintenance mobile
+        function toggleMobileMaintenanceField() {
+            const status = document.getElementById('mobileEditStatus').value;
+            const maintenanceField = document.getElementById('mobileMaintenanceField');
+            
+            if (status === 'Maintenance') {
+                maintenanceField.classList.remove('hidden');
+            } else {
+                maintenanceField.classList.add('hidden');
+                document.getElementById('mobileEditMaintenance').value = '';
+            }
+        }
+
+        // Notification mobile
+        function showMobileNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            notification.className = `fixed top-4 left-4 right-4 mx-auto max-w-md px-6 py-4 rounded-lg shadow-lg z-50 fade-in text-center ${
+                type === 'success' ? 'bg-green-500 text-white' :
+                type === 'error' ? 'bg-red-500 text-white' :
+                'bg-blue-500 text-white'
+            }`;
+            notification.textContent = message;
+            
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.style.opacity = '0';
+                setTimeout(() => notification.remove(), 300);
+            }, 4000);
+        }
+
+        // Arrêter le scanner si on quitte la page
+        window.addEventListener('beforeunload', function() {
+            stopQRScanner();
+        });
+    </script>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'972a28ed56ae2f61',t:'MTc1NTc3OTYxNy4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
